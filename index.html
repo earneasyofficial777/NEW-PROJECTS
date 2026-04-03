@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JASEEM - The Powered AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body, #app { height: 100vh; width: 100%; overflow: hidden; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        .animate-bounce { animation: bounce 1s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="app" class="flex">
+        <div class="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-lg">⚡</div>
+                    <div>
+                        <div class="font-bold text-lg">JASEEM</div>
+                        <div class="text-xs text-gray-400">AI CODER</div>
+                    </div>
+                </div>
+                <button onclick="newChat()" class="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 rounded-lg py-2 px-4 font-semibold">➕ New Chat</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <div class="text-xs text-gray-400 uppercase mb-3">History</div>
+                <div id="chatHistory"></div>
+            </div>
+            <div class="p-4 border-t border-gray-700 space-y-2">
+                <button onclick="toggleSettings()" class="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 rounded-lg py-2 px-4 font-semibold">⚙️ Settings</button>
+                <button onclick="downloadCode()" class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 rounded-lg py-2 px-4 font-semibold">⬇️ Download</button>
+            </div>
+        </div>
+        <div class="flex-1 flex flex-col">
+            <div class="border-b border-gray-700 bg-gray-800 p-4 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">JASEEM</h1>
+                    <p class="text-xs text-gray-400">AI Coding Platform</p>
+                </div>
+                <div id="statusBadge" class="text-xs px-3 py-1 rounded-full bg-green-600">✅ Ready</div>
+            </div>
+            <div id="settingsModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div class="bg-gray-800 p-8 rounded-xl w-96 max-h-96 overflow-y-auto border border-gray-700">
+                    <h2 class="text-2xl font-bold mb-6">⚙️ Settings</h2>
+                    <div class="space-y-4">
+                        <select id="provider" onchange="updateProvider()" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">
+                            <option value="openrouter">🤖 OpenRouter</option>
+                            <option value="google">🔍 Google AI</option>
+                        </select>
+                        <div id="settingsFields"></div>
+                        <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 rounded py-2 font-semibold">Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-1 flex gap-4 p-4 overflow-hidden">
+                <div class="flex-1 flex flex-col bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                    <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div class="flex items-center justify-center h-full text-gray-400">
+                            <div class="text-center">
+                                <div class="text-6xl mb-4">⚡</div>
+                                <p class="text-lg font-semibold">Welcome to JASEEM</p>
+                                <p class="text-sm">Ask me to code anything!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <form onsubmit="handleSend(event)" class="p-4 border-t border-gray-700">
+                        <div class="flex gap-2">
+                            <input type="text" id="inputField" placeholder="Ask JASEEM..." class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 rounded-lg px-4 py-3 font-semibold">Send</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex-1 flex flex-col gap-4">
+                    <div class="flex-1 bg-gray-800 rounded-lg border border-gray-700 overflow-hidden flex flex-col">
+                        <div class="bg-gray-700 px-4 py-2 border-b border-gray-600 font-semibold">📱 Preview</div>
+                        <div id="previewContainer" class="flex-1 overflow-auto bg-white">
+                            <div class="flex items-center justify-center h-full text-gray-400">Preview here</div>
+                        </div>
+                    </div>
+                    <div class="h-48 bg-gray-800 rounded-lg border border-gray-700 flex flex-col">
+                        <div class="bg-gray-700 px-4 py-2 border-b border-gray-600 font-semibold">🖥️ Console</div>
+                        <div id="consoleOutput" class="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-xs text-gray-300">Ready...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let messages = [];
+        let settings = { provider: 'openrouter', openrouterKey: '', openrouterModel: 'gpt-3.5-turbo', googleKey: '' };
+        
+        function loadSettings() {
+            const saved = localStorage.getItem('jaseemSettings');
+            if (saved) settings = JSON.parse(saved);
+            document.getElementById('provider').value = settings.provider;
+            updateProvider();
+        }
+        
+        function saveSettings() {
+            settings.openrouterKey = document.getElementById('key1')?.value || settings.openrouterKey;
+            settings.openrouterModel = document.getElementById('model1')?.value || settings.openrouterModel;
+            settings.googleKey = document.getElementById('key2')?.value || settings.googleKey;
+            localStorage.setItem('jaseemSettings', JSON.stringify(settings));
+            addLog('✅ Settings saved');
+            toggleSettings();
+        }
+        
+        function updateProvider() {
+            const provider = document.getElementById('provider').value;
+            const fieldsDiv = document.getElementById('settingsFields');
+            if (provider === 'openrouter') {
+                fieldsDiv.innerHTML = `<input type="password" id="key1" placeholder="API Key" value="${settings.openrouterKey}" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"><input type="text" id="model1" placeholder="Model" value="${settings.openrouterModel}" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">`;
+            } else {
+                fieldsDiv.innerHTML = `<input type="password" id="key2" placeholder="Google API Key" value="${settings.googleKey}" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white">`;
+            }
+        }
+        
+        function addLog(msg) {
+            const output = document.getElementById('consoleOutput');
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        async function handleSend(event) {
+            event.preventDefault();
+            const input = document.getElementById('inputField');
+            const prompt = input.value.trim();
+            if (!prompt || (!settings.openrouterKey && !settings.googleKey)) {
+                addLog('❌ Configure API first!');
+                return;
+            }
+            
+            addMsg('user', prompt);
+            input.value = '';
+            addLog('🤖 Thinking...');
+            
+            try {
+                let response;
+                if (settings.provider === 'openrouter') {
+                    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${settings.openrouterKey}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': window.location.origin,
+                        },
+                        body: JSON.stringify({
+                            model: settings.openrouterModel,
+                            messages: [
+                                { role: 'system', content: 'Write COMPLETE code. NO truncation. ALL code included.' },
+                                { role: 'user', content: prompt }
+                            ],
+                            max_tokens: 4096,
+                        }),
+                    });
+                    if (!res.ok) throw new Error(`Error: ${res.status}`);
+                    const data = await res.json();
+                    response = data.choices[0].message.content;
+                } else {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${settings.googleKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { maxOutputTokens: 4096 }
+                        }),
+                    });
+                    if (!res.ok) throw new Error(`Error: ${res.status}`);
+                    const data = await res.json();
+                    response = data.candidates[0].content.parts[0].text;
+                }
+                
+                const codeMatch = response.match(/```(html|jsx|js|python)\n([\s\S]*?)\n```/);
+                if (codeMatch) {
+                    addMsg('assistant', 'Code generated', codeMatch[2]);
+                    document.getElementById('previewContainer').innerHTML = `<iframe srcdoc="${codeMatch[2].replace(/"/g, '&quot;')}" class="w-full h-full border-0"></iframe>`;
+                    addLog('✅ Preview loaded');
+                } else {
+                    addMsg('assistant', response);
+                }
+                addLog('✅ Done');
+            } catch (error) {
+                addLog(`❌ ${error.message}`);
+            }
+        }
+        
+        function addMsg(role, content, code = '') {
+            messages.push({ role, content, code });
+            const container = document.getElementById('messagesContainer');
+            if (container.children[0]?.textContent.includes('Welcome')) container.innerHTML = '';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-md px-4 py-3 rounded-lg ${role === 'user' ? 'bg-blue-600' : 'bg-gray-700'}`;
+            bubble.innerHTML = `<p class="text-sm">${content}</p>`;
+            
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            if (role === 'user') {
+                const hist = document.getElementById('chatHistory');
+                const item = document.createElement('div');
+                item.className = 'text-sm text-gray-300 p-2 hover:bg-gray-700 rounded truncate';
+                item.textContent = content.substring(0, 20) + '...';
+                hist.appendChild(item);
+            }
+        }
+        
+        function downloadCode() {
+            const code = messages.filter(m => m.code).map(m => m.code).join('\n\n');
+            if (!code) {
+                addLog('⚠️ No code');
+                return;
+            }
+            const el = document.createElement('a');
+            el.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(code);
+            el.download = 'jaseem.txt';
+            el.click();
+            addLog('✅ Downloaded');
+        }
+        
+        function toggleSettings() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        }
+        
+        function newChat() {
+            messages = [];
+            document.getElementById('messagesContainer').innerHTML = '<div class="flex items-center justify-center h-full text-gray-400"><div class="text-center"><div class="text-6xl mb-4">⚡</div><p class="text-lg">Welcome to JASEEM</p></div></div>';
+            document.getElementById('chatHistory').innerHTML = '';
+        }
+        
+        loadSettings();
+    </script>
+</body>
+  </html>
